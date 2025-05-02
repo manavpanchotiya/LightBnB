@@ -27,6 +27,7 @@ const getUserWithEmail = (email) => {
   })
   .catch((err) => {
     console.log(err.message);
+    return Promise.reject(err);
   });
 };
 
@@ -43,6 +44,7 @@ const getUserWithId = (id) => {
   })
   .catch((err) => {
     console.log(err.message);
+    return Promise.reject(err);
   });
 };
 
@@ -62,6 +64,7 @@ const addUser = function (user) {
   })
   .catch((err) => {
     console.log(err.message);
+    return Promise.reject(err);
   });
 };
 
