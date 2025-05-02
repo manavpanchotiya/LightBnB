@@ -10,7 +10,7 @@ const pool = new Pool({
 // pool.query(`SELECT title FROM properties LIMIT 10;`).then(response => {console.log(response)})
 
 const properties = require("./json/properties.json");
-const users = require("./json/users.json");
+// const users = require("./json/users.json");
 
 /// Users
 
@@ -104,14 +104,49 @@ const getAllReservations = (guest_id, limit = 10) => {
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 const getAllProperties = (options, limit = 10) => {
-  return pool
-    .query(`SELECT * FROM properties LIMIT $1`, [limit])
-    .then((result) => {
-      return result.rows;
-    })
-    .catch((err) => {
-      console.log(err.message);
-    });
+  
+  const queryParams = [];
+
+  let queryString = `
+  SELECT properties.*, AVG(property_reviews.rating) AS average_rating
+  FROM properties
+  JOIN property_reviews ON properties.id = property_reviews.property_id
+  `;
+  
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    queryString += `WHERE city LIKE $${queryParams.length}`;
+  }
+
+  if (options.owner_id) {
+    queryParams.push(options.owner_id);
+    queryString += `${queryParams.length === 1 ? 'WHERE' : 'AND'} owner_id = $${queryParams.length}`;
+  }
+
+  if (options.minimum_price_per_night) {
+    queryParams.push((options.minimum_price_per_night) * 100);
+    queryString += `${queryParams.length === 1 ? 'WHERE' : 'AND'} cost_per_night >= $${queryParams.length}`;
+  }
+
+  if (options.maximum_price_per_night) {
+    queryParams.push((options.maximum_price_per_night) * 100);
+    queryString += `${queryParams.length === 1 ? 'WHERE' : 'AND'} cost_per_night <= $${queryParams.length}`;
+  }
+
+  if (options.minimum_rating) {
+    queryParams.push(options.minimum_rating);
+    queryString += `${queryParams.length === 1 ? 'WHERE' : `AND`} rating >= $${queryParams.length}`;
+  }
+
+  queryParams.push(limit);
+  queryString += `
+  GROUP BY properties.id
+  ORDER BY cost_per_night
+  LIMIT $${queryParams.length};`;
+
+  console.log(queryString, queryParams);
+
+  return pool.query(queryString, queryParams).then((res) => res.rows);
 };
 
 /**
